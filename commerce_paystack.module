@@ -1,0 +1,265 @@
+<?php
+
+/**
+ * @file
+ * Implements PayStack payment services for use with Drupal Commerce.
+ */
+
+/**
+ * Implements hook_perm().
+ */
+function commerce_paystack_permission() {
+  return array(
+    'access paystack payments' => array(
+      'title' => t('Manage PayStack Payments'),
+    ),
+    'manage paystack config' => array(
+      'title' => t('Manage PayStack Config'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function commerce_paystack_menu() {
+  $items = array();
+
+  $items['admin/paystack/look-up/nojs/%'] = array(
+    'page callback' => 'commerce_paystack_ajax_requery',
+    'access arguments' => array('access paystack payments'),
+    'page arguments' => array(4),
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/paystack/look-up/ajax/%'] = array(
+      'delivery callback' => 'ajax_deliver',
+    ) + $items['admin/paystack/look-up/nojs/%'];
+
+  // This menu link will be used as the payment notification url.
+  $items['commerce_paystack/webhook'] = array(
+    'page callback' => 'commerce_paystack_process_webhook',
+    'page arguments' => array(),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Menu Ajax callback to look up transaction from PayStack.
+ */
+function commerce_paystack_ajax_requery($txn_id) {
+  $payment_info = commerce_paystack_update_payment($txn_id);
+  $commands = array();
+
+  if (!$payment_info) {
+    $commands[] = ajax_command_alert(t('Error looking up payment transaction.'));
+    return array(
+      '#type' => 'ajax',
+      '#commands' => $commands,
+    );
+  }
+
+  $commands[] = ajax_command_alert(t('Payment transaction status is: @status The page will now reload', array('@status' => strtoupper($payment_info->status))));
+
+  // Send a command for the page to reload.
+  ctools_add_js('ajax-responder');
+  $commands[] = array('command' => 'reload');
+
+  return array(
+    '#type' => 'ajax',
+    '#commands' => $commands,
+  );
+}
+
+/**
+ * Updates a payment's status and optionally the order's status.
+ *
+ * @param      $payment_id
+ *  Payment ID to looked up
+ * @param bool $update_order_status
+ *  If TRUE order status will be updated based on the payment status
+ *
+ * @return bool|mixed
+ *  The payment transaction object if successful, FALSE otherwise.
+ */
+function commerce_paystack_update_payment($payment_id, $update_order_status = TRUE) {
+  $payment_transaction = commerce_payment_transaction_load($payment_id);
+  if (!$payment_transaction) {
+    return FALSE;
+  }
+  $order = commerce_order_load($payment_transaction->order_id);
+
+  $txn_info = commerce_paystack_lookup_transaction($payment_id);
+  if (!$txn_info) {
+    if ($update_order_status) {
+      commerce_payment_redirect_pane_previous_page($order);
+    }
+    return FALSE;
+  }
+
+  $payment_transaction->remote_status = $txn_info['data']['status'];
+  $payment_transaction->status = $txn_info['data']['status'] == 'success' ? COMMERCE_PAYMENT_STATUS_SUCCESS : COMMERCE_PAYMENT_STATUS_FAILURE;
+  $payment_transaction->message = $txn_info['data']['gateway_response'];
+  $payment_transaction->payload = $txn_info;
+  commerce_payment_transaction_save($payment_transaction);
+
+  if ($update_order_status) {
+    if (COMMERCE_PAYMENT_STATUS_SUCCESS == $payment_transaction->status) {
+      drupal_set_message(t('Payment successful.<br/>Payment Transaction ID:') . ' '
+        . $payment_transaction->transaction_id
+        . t('<br/>PayStack Reference:') . ' '
+        . $payment_transaction->remote_id, 'status');
+      commerce_payment_redirect_pane_next_page($order);
+    }
+    else {
+      drupal_set_message(
+        t('Your payment was not successful<br/>Payment Transaction ID:') . ' '
+        . $payment_transaction->transaction_id
+        . t('<br/>Reason:') . ' ' . $payment_transaction->message, 'error');
+      commerce_payment_redirect_pane_previous_page($order);
+    }
+  }
+
+  return $payment_transaction;
+}
+
+
+/**
+ * Looks up transaction information from PayStack.
+ *
+ * Returns an array containing transaction information on success,
+ * FALSE otherwise.
+ *
+ * @param string $txn_id
+ *   Payment transaction ID.
+ *
+ * @return array
+ *   Array containing transaction information
+ */
+function commerce_paystack_lookup_transaction($txn_id) {
+  $payment_method = commerce_payment_method_instance_load(
+    'paystack_standard|commerce_payment_paystack_standard'
+  );
+  if (!$payment_method['settings']) {
+    // Most likely the method is not enabled.
+    return FALSE;
+  }
+
+  $transaction = commerce_payment_transaction_load($txn_id);
+  $url = 'https://api.paystack.co/transaction/verify/' . $transaction->remote_id;
+  $options = array();
+  $options['headers'] = array(
+    'authorization' => 'Bearer ' . $payment_method['settings']['secret_key'],
+  );
+
+  $response = drupal_http_request($url, $options);
+  if (property_exists($response, 'error')) {
+    return FALSE;
+  }
+  else {
+    return json_decode($response->data, TRUE);
+  }
+}
+
+/*
+ * Default settings for PayStack.
+ * 
+ * Dummy settings, really.
+ */
+function commerce_paystack_default_settings () {
+  return array(
+    'secret_key' => 'SECRET_KEY',
+    'public_key' => 'PUBLIC_KEY',
+    'currency_code' => 'NGN',
+  );
+}
+
+/**
+ * Payment method callback: settings form.
+ */
+function commerce_paystack_settings_form($settings = array()) {
+  // Merge default settings into the stored settings array.
+  $settings = (array) $settings + commerce_paystack_default_settings();
+  
+  $form = array();
+
+  $form['secret_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Secret Key'),
+    '#description' => t('Your PayStack secret key'),
+    '#default_value' => $settings['secret_key'],
+    '#maxlength' => 150,
+  );
+
+  $form['public_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Public Key'),
+    '#description' => t('Your PayStack public key'),
+    '#default_value' => $settings['public_key'],
+    '#maxlength' => 150,
+  );
+
+  $form['currency_code'] = array(
+    '#type' => 'select',
+    '#title' => t('Select currency'),
+    '#options' => array('NGN' => 'Naira - NGN'),
+    '#default_value' => $settings['currency_code'],
+  );
+  
+  return $form;
+}
+
+/**
+ * Processes event notifications from PayStack.
+ */
+function commerce_paystack_process_webhook() {
+  // Only a post with paystack signature header gets our attention
+  if ((strtoupper($_SERVER['REQUEST_METHOD']) != 'POST' ) || !array_key_exists('HTTP_X_PAYSTACK_SIGNATURE', $_SERVER) ) {
+    watchdog('commerce_paystack', 'Webhook URL accessed with no POST data submitted.', array(), WATCHDOG_WARNING);
+    drupal_exit();
+  }
+
+  // Retrieve the request's body. Rather than read from the $_POST superglobal
+  // php://input is used. This is because the $_POST variable only holds data
+  // that are encoded as form data ie application/x-www-form-urlencoded or
+  // multipart/form-data-encoded. Data encoded in any other way is not contained
+  // in the $_POST variable. See http://stackoverflow.com/a/8893792
+  $input = @file_get_contents("php://input");
+
+  $payment_method = commerce_payment_method_instance_load(
+    'paystack_standard|commerce_payment_paystack_standard'
+  );
+
+  // Validate event. Do all at once to avoid timing attack.
+  if ($_SERVER['HTTP_X_PAYSTACK_SIGNATURE'] !== hash_hmac('sha512', $input, $payment_method['settings']['secret_key'])) {
+    watchdog('commerce_paystack', 'Webhook data signature verification failed', array(), WATCHDOG_WARNING);
+    drupal_exit();
+  }
+
+  drupal_send_headers(array('status' => '200'), TRUE);
+
+  // Parse webhook data
+  $webhook_data = json_decode($input, TRUE);
+
+  // @todo: This should be in a database abi? But do we really need to store it?
+  watchdog('commerce_paystack', 'Webhook data from PayStack: ' . print_r($webhook_data, TRUE));
+
+  // The payment could be updated using the data from the webhook data
+  // but there is already a function that does that. So in the interest of
+  // keeping things DRY.
+  commerce_paystack_update_payment($webhook_data['data']['id'], TRUE);
+
+  drupal_exit();
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function commerce_paystack_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'commerce_paystack') . '/includes/views',
+  );
+}
