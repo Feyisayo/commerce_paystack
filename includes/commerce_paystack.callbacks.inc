@@ -131,6 +131,11 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
     // Redirect the user to PayStack using the returned authorization URL
     $form['#action'] = $paystack_txn['data']['authorization_url'];
 
+    // Add the redirection behaviour that would have been automatically added
+    // if 'offsite_autoredirect' had been set to TRUE
+    $form['#attached']['js'][] = drupal_get_path('module', 'commerce_payment') . '/commerce_payment.js';
+    $form['help']['#markup'] = '<div class="checkout-help">' . t('Please wait while you are redirected to the payment server. If nothing happens within 10 seconds, please click on the button below.') . '</div>';
+
     $form['submit'] = array(
       '#type' => 'submit',
       '#value' => t('Proceed to PayStack'),

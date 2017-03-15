@@ -258,6 +258,19 @@ function commerce_paystack_form_commerce_checkout_form_alter(&$form, &$form_stat
 }
 
 /**
+ * Implements hook_commerce_payment_method_info_alter().
+ */
+function commerce_paystack_commerce_payment_method_info_alter(&$payment_methods) {
+  // Set the payment form to auto-submit if standard mode is used.
+  $instance = commerce_payment_method_instance_load('paystack|commerce_payment_paystack');
+  if ($instance['settings']['mode'] == 'standard') {
+    $payment_methods['paystack']['offsite_autoredirect'] = TRUE;
+  } else {
+    $payment_methods['paystack']['offsite_autoredirect'] = FALSE;
+  }
+}
+
+/**
  * Implements hook_views_api().
  */
 function commerce_paystack_views_api() {
