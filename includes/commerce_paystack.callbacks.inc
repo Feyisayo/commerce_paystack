@@ -142,8 +142,8 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
 
     $form['#action'] = $callback_url;
     $markup = <<<MARKUP
-<a href="#" style="font-size: 16px;font-family: Helvetica, Arial, sans-serif;color: #ffffff;text-decoration: none;color: #ffffff;text-decoration: none;border-radius: 3px;padding: 12px 12px;border: 1px solid #49A861;background-color: #49A861;margin-left: auto;margin-right: auto;
-    display: inline-block;" onclick="payWithPaystack()"><span style="text-align: center;width:auto;">Pay With PayStack</span></a>
+<a href="#" style="font-size: 16px;font-family: Helvetica, Arial, sans-serif;color: #ffffff;text-decoration: none;color: #ffffff;text-decoration: none;border-radius: 3px;padding: 6px 6px;border: 1px solid #49A861;background-color: #49A861;margin-left: auto;margin-right: auto;
+    display: inline-block;font-weight: bold;" onclick="payWithPaystack()"><span style="text-align: center;width:auto;">Pay With PayStack</span></a>
 MARKUP;
 
     $form['pay'] = array(
@@ -178,21 +178,20 @@ SCRIPT;
  * Payment method callback: redirect form return validation.
  */
 function commerce_paystack_redirect_form_validate($order, $payment_method) {
-  // If the inline mode is used make sure the PayStack references exists in the
-  // URL
-  if ($payment_method['settings']['mode'] == 'inline') {
-    if (arg(5) == NULL) {
-      watchdog('commerce_paystack', 'PayStack reference not found in URL using inline mode', array(), WATCHDOG_WARNING);
-      return FALSE;
-    }
-  }
   // Ensure the transaction is present.
   if (!isset($_SESSION['commerce_paystack_transaction_id'])) {
     return FALSE;
   }
-  else {
-    return TRUE;
+  else if ($payment_method['settings']['mode'] == 'inline') {
+    // If the inline mode is used make sure the PayStack references exists in
+    // the URL.
+    if (arg(5) == NULL) {
+      watchdog('commerce_paystack', 'PayStack reference not found in URL for using inline mode for payment transaction @id', array('@id' => $_SESSION['commerce_paystack_transaction_id']), WATCHDOG_WARNING);
+      return FALSE;
+    }
   }
+
+  return TRUE;
 }
 
 /**
@@ -219,27 +218,4 @@ function commerce_paystack_redirect_form_submit($order, $payment_method) {
   }
 
   unset($_SESSION['commerce_paystack_transaction_id']);
-}
-
-/**
- * Implements hook_form_FORM_ID_alter().
- *
- * Adds the PayStack logo.
- */
-function commerce_paystack_form_commerce_checkout_form_alter(&$form, &$form_state) {
-  // If this checkout form contains the payment method radios...
-  if (empty($form['commerce_payment']['payment_method']['#options'])) {
-    return;
-  }
-
-  // Loop over its options array looking for a PayStack option.
-  foreach ($form['commerce_payment']['payment_method']['#options'] as $key => &$value) {
-    list($method_id) = explode('|', $key);
-    // If we find PayStack..
-    if ($method_id == 'paystack') {
-      $path = url('<front>', array('absolute' => TRUE)) . '/' . drupal_get_path('module', 'commerce_paystack') . '/paystack.png';
-      $value = t('PayStack') . "<br/><img style='width: 200px; height: auto' src = '$path'/>";
-      break;
-    }
-  }
 }
