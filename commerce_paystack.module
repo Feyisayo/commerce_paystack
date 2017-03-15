@@ -47,6 +47,27 @@ function commerce_paystack_menu() {
 }
 
 /**
+ * Implements hook_commerce_payment_method_info().
+ */
+function commerce_paystack_commerce_payment_method_info() {
+  $payment_methods['paystack'] = array(
+    'base' => 'commerce_paystack',
+    'title' => t('PayStack'),
+    'short_title' => t('PayStack'),
+    'description' => t('PayStack for Drupal Commerce'),
+    'terminal' => FALSE,
+    'offsite' => TRUE,
+    'offsite_autoredirect' => FALSE,
+    'active' => TRUE,
+    'file' => 'includes/commerce_paystack.callbacks.inc'
+  );
+
+  return $payment_methods;
+}
+
+
+
+/**
  * Menu Ajax callback to look up transaction from PayStack.
  */
 function commerce_paystack_ajax_requery($txn_id) {
@@ -125,7 +146,6 @@ function commerce_paystack_update_payment($payment_id, $update_order_status = TR
   return $payment_transaction;
 }
 
-
 /**
  * Looks up transaction information from PayStack.
  *
@@ -140,7 +160,7 @@ function commerce_paystack_update_payment($payment_id, $update_order_status = TR
  */
 function commerce_paystack_lookup_transaction($txn_id) {
   $payment_method = commerce_payment_method_instance_load(
-    'paystack_standard|commerce_payment_paystack_standard'
+    'paystack|commerce_payment_paystack'
   );
   if (!$payment_method['settings']) {
     // Most likely the method is not enabled.
@@ -163,54 +183,6 @@ function commerce_paystack_lookup_transaction($txn_id) {
   }
 }
 
-/*
- * Default settings for PayStack.
- * 
- * Dummy settings, really.
- */
-function commerce_paystack_default_settings () {
-  return array(
-    'secret_key' => 'SECRET_KEY',
-    'public_key' => 'PUBLIC_KEY',
-    'currency_code' => 'NGN',
-  );
-}
-
-/**
- * Payment method callback: settings form.
- */
-function commerce_paystack_settings_form($settings = array()) {
-  // Merge default settings into the stored settings array.
-  $settings = (array) $settings + commerce_paystack_default_settings();
-  
-  $form = array();
-
-  $form['secret_key'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Secret Key'),
-    '#description' => t('Your PayStack secret key'),
-    '#default_value' => $settings['secret_key'],
-    '#maxlength' => 150,
-  );
-
-  $form['public_key'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Public Key'),
-    '#description' => t('Your PayStack public key'),
-    '#default_value' => $settings['public_key'],
-    '#maxlength' => 150,
-  );
-
-  $form['currency_code'] = array(
-    '#type' => 'select',
-    '#title' => t('Select currency'),
-    '#options' => array('NGN' => 'Naira - NGN'),
-    '#default_value' => $settings['currency_code'],
-  );
-  
-  return $form;
-}
-
 /**
  * Processes event notifications from PayStack.
  */
@@ -229,7 +201,7 @@ function commerce_paystack_process_webhook() {
   $input = @file_get_contents("php://input");
 
   $payment_method = commerce_payment_method_instance_load(
-    'paystack_standard|commerce_payment_paystack_standard'
+    'paystack|commerce_payment_paystack'
   );
 
   // Validate event. Do all at once to avoid timing attack.
