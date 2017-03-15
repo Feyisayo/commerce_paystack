@@ -1,6 +1,6 @@
 name = PayStack
 description = Implements PayStack payment services for use with Drupal Commerce.
-package = Commerce (PayStack)
+package = Commerce (contrib)
 dependencies[] = commerce
 dependencies[] = commerce_ui
 dependencies[] = commerce_payment

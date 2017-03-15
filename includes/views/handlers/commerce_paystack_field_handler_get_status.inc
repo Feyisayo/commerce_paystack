@@ -34,7 +34,7 @@ class commerce_paystack_field_handler_get_status extends views_handler_field {
     $payment_method = $this->get_value($values, 'payment_method');
 
     // Render this only for PayStack payments.
-    if ($payment_method == 'paystack_standard') {
+    if ($payment_method == 'paystack') {
       return l(t('Check status'), 'admin/paystack/look-up/nojs/' . $transaction_id, array('attributes' => array('class' => 'use-ajax')));
     }
     else {
