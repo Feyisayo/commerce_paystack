@@ -141,12 +141,14 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
     drupal_add_js('https://js.paystack.co/v1/inline.js', 'external');
 
     $form['#action'] = $callback_url;
+    $markup = <<<MARKUP
+<a href="#" style="font-size: 16px;font-family: Helvetica, Arial, sans-serif;color: #ffffff;text-decoration: none;color: #ffffff;text-decoration: none;border-radius: 3px;padding: 12px 12px;border: 1px solid #49A861;background-color: #49A861;margin-left: auto;margin-right: auto;
+    display: inline-block;" onclick="payWithPaystack()"><span style="text-align: center;width:auto;">Pay With PayStack</span></a>
+MARKUP;
 
     $form['pay'] = array(
-      '#type' => 'button',
-      '#button_type' => 'button',
-      '#value' => t('Pay with PayStack'),
-      '#attributes' => array('onclick' => array('payWithPaystack()')),
+      '#markup' => $markup,
+      '#weight' => 500,
     );
 
     $script = <<<SCRIPT
