@@ -220,3 +220,26 @@ function commerce_paystack_redirect_form_submit($order, $payment_method) {
 
   unset($_SESSION['commerce_paystack_transaction_id']);
 }
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * Adds the PayStack logo.
+ */
+function commerce_paystack_form_commerce_checkout_form_alter(&$form, &$form_state) {
+  // If this checkout form contains the payment method radios...
+  if (empty($form['commerce_payment']['payment_method']['#options'])) {
+    return;
+  }
+
+  // Loop over its options array looking for a PayStack option.
+  foreach ($form['commerce_payment']['payment_method']['#options'] as $key => &$value) {
+    list($method_id) = explode('|', $key);
+    // If we find PayStack..
+    if ($method_id == 'paystack') {
+      $path = url('<front>', array('absolute' => TRUE)) . '/' . drupal_get_path('module', 'commerce_paystack') . '/paystack.png';
+      $value = t('PayStack') . "<br/><img style='width: 200px; height: auto' src = '$path'/>";
+      break;
+    }
+  }
+}
