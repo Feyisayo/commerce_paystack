@@ -122,6 +122,14 @@ function commerce_paystack_update_payment($payment_id, $update_order_status = TR
 
   $payment_transaction->remote_status = $txn_info['data']['status'];
   $payment_transaction->status = $txn_info['data']['status'] == 'success' ? COMMERCE_PAYMENT_STATUS_SUCCESS : COMMERCE_PAYMENT_STATUS_FAILURE;
+  // Check for an amount discrepancy
+  if ($txn_info['data']['amount'] != $payment_transaction->amount) {
+    $payment_transaction->status = COMMERCE_PAYMENT_STATUS_PENDING;
+    watchdog('commerce_paystack',
+      t('Amount discrepancy. local transaction amount: @lamount. Amount from PayStack: @ramount'),
+      array('@lamount' => $payment_transaction->amount, '@ramount' => $txn_info['data']['amount']));
+  }
+
   $payment_transaction->message = $txn_info['data']['gateway_response'];
   $payment_transaction->payload = $txn_info;
   commerce_payment_transaction_save($payment_transaction);
