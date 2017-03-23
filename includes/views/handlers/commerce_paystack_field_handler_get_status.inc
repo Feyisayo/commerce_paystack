@@ -30,6 +30,11 @@ class commerce_paystack_field_handler_get_status extends views_handler_field {
    * Overridden render() method.
    */
   public function render($values) {
+    // Make sure Drupal Ajax framework javascript is loaded.
+    // If the ajax framework has already been loaded drupal_add_library() will
+    // not load it.
+    drupal_add_library('system', 'drupal.ajax');
+
     $transaction_id = $this->get_value($values, 'transaction_id');
     $payment_method = $this->get_value($values, 'payment_method');
 
