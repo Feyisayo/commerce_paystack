@@ -97,6 +97,36 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
 
   $callback_url = url('checkout/' . $order->order_id . '/payment/return/' . $order->data['payment_redirect_key'], array('absolute' => TRUE));
 
+  // Get billing details ready for Paystack.
+  $custom_fields = array();
+  $custom_fields_str = '';
+  $billing_info = $wrapper->commerce_customer_billing->commerce_customer_address->value();
+
+  if ($billing_info['first_name']) {
+    $custom_fields[] = array(
+      'display_name' => 'Billing First Name',
+      'variable_name' => "first_name",
+      'value' => $billing_info['first_name']
+    );
+    $custom_fields_str .= "{ 
+      display_name: 'Billing First Name',
+      variable_name: 'first_name',
+      value: '{$billing_info['first_name']}'
+     },";
+
+  }
+  if ($billing_info['last_name']) {
+    $custom_fields[] = array(
+      'display_name' => 'Billing Surname',
+      'variable_name' => "last_name",
+      'value' => $billing_info['last_name']
+    );
+    $custom_fields_str .= "{ 
+      display_name: 'Billing Surname',
+      variable_name: 'last_name',
+      value: '{$billing_info['last_name']}'
+     },";
+  }
   // Create the checkout form based on the standard or inline mode.
   if ($payment_method['settings']['mode'] == 'standard') {
     // Initialize the payment transaction from PayStack.
@@ -107,6 +137,9 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
       'amount' => $transaction->amount,
       'email'=> $user->mail,
       'callback_url' => $callback_url,
+      'metadata' => array(
+        'custom_fields' => $custom_fields
+      )
     ));
     $options['headers'] = array(
       'authorization' => 'Bearer ' . $payment_method['settings']['secret_key'],
@@ -163,6 +196,11 @@ MARKUP;
       email: '{$user->mail}',
       amount: {$transaction->amount},
       ref: "{$transaction->transaction_id}",
+      metadata: {
+        custom_fields: [
+          $custom_fields_str
+        ]
+      },
       callback: function(response){
         window.location.href = '$callback_url' + '/' + response.reference;
       },
