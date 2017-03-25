@@ -1,0 +1,24 @@
+/* CSS for button thanks to http://css3buttongenerator.com/ */
+.paystack-btn {
+  background: #49A861;
+  background-image: -webkit-linear-gradient(top, #49A861, #2D753F);
+  background-image: -moz-linear-gradient(top, #49A861, #2D753F);
+  background-image: -ms-linear-gradient(top, #49A861, #2D753F);
+  background-image: -o-linear-gradient(top, #49A861, #2D753F);
+  background-image: linear-gradient(to bottom, #49A861, #2D753F);
+  -webkit-border-radius: 28;
+  -moz-border-radius: 28;
+  border-radius: 28px;
+  font-family: Arial;
+  color: #ffffff;
+  font-size: 17px;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.paystack-btn:hover, .paystack-btn:active, .paystack-btn:focus {
+  background: #49A861;
+  color: #ffffff;
+  text-decoration: none;
+}

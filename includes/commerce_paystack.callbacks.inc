@@ -6,7 +6,7 @@
 
 /*
  * Default settings for PayStack.
- * 
+ *
  * Dummy settings, really.
  */
 function commerce_paystack_default_settings () {
@@ -108,7 +108,7 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
       'variable_name' => "first_name",
       'value' => $billing_info['first_name']
     );
-    $custom_fields_str .= "{ 
+    $custom_fields_str .= "{
       display_name: 'Billing First Name',
       variable_name: 'first_name',
       value: '{$billing_info['first_name']}'
@@ -121,7 +121,7 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
       'variable_name' => "last_name",
       'value' => $billing_info['last_name']
     );
-    $custom_fields_str .= "{ 
+    $custom_fields_str .= "{
       display_name: 'Billing Surname',
       variable_name: 'last_name',
       value: '{$billing_info['last_name']}'
@@ -179,15 +179,17 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
     drupal_add_js('https://js.paystack.co/v1/inline.js', 'external');
 
     $form['#action'] = $callback_url;
-    $markup = <<<MARKUP
-<a href="#" style="font-size: 16px;font-family: Helvetica, Arial, sans-serif;color: #ffffff;text-decoration: none;color: #ffffff;text-decoration: none;border-radius: 3px;padding: 6px 6px;border: 1px solid #49A861;background-color: #49A861;margin-left: auto;margin-right: auto;
-    display: inline-block;font-weight: bold;" onclick="payWithPaystack()"><span style="text-align: center;width:auto;">Pay With PayStack</span></a>
-MARKUP;
 
     $form['pay'] = array(
-      '#markup' => $markup,
+      '#markup' => "<a href='#' class='paystack-btn' onclick='payWithPaystack()'>Pay with PayStack</a>",
       '#weight' => 500,
     );
+
+    drupal_add_css(
+      drupal_get_path('module', 'commerce_paystack') . '/commerce_paystack.css',
+      'file'
+    );
+
 
     $script = <<<SCRIPT
   function payWithPaystack(){
