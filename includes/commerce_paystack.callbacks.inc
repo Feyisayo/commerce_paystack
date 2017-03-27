@@ -136,11 +136,11 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
     $options['method'] = 'POST';
     $options['data'] = json_encode(array(
       'amount' => $transaction->amount,
-      'email'=> $user->mail,
+      'email' => $user->mail,
       'callback_url' => $callback_url,
       'metadata' => array(
         'custom_fields' => $custom_fields,
-      )
+      ),
     ));
     $options['headers'] = array(
       'authorization' => 'Bearer ' . $payment_method['settings']['secret_key'],
@@ -150,7 +150,7 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
 
     $response = drupal_http_request($url, $options);
     if (property_exists($response, 'error')) {
-      drupal_set_message(t('An unexpected error occured connecting to PayStack. Please try again later'), 'error');
+      drupal_set_message(t('An unexpected error occurred connecting to PayStack. Please try again later'), 'error');
       watchdog('commerce_paystack', 'Error initializing payment: @response', array('@response' => print_r($response, TRUE)));
       return array();
     }
@@ -166,7 +166,7 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
     $form['#action'] = $paystack_txn['data']['authorization_url'];
 
     // Add the redirection behaviour that would have been automatically added
-    // if 'offsite_autoredirect' had been set to TRUE
+    // if 'offsite_autoredirect' had been set to TRUE.
     $form['#attached']['js'][] = drupal_get_path('module', 'commerce_payment') . '/commerce_payment.js';
     $form['help']['#markup'] = '<div class="checkout-help">' . t('Please wait while you are redirected to the payment server. If nothing happens within 10 seconds, please click on the button below.') . '</div>';
 

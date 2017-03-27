@@ -40,6 +40,7 @@ function commerce_paystack_menu() {
   $items['commerce_paystack/webhook'] = array(
     'page callback' => 'commerce_paystack_process_webhook',
     'page arguments' => array(),
+    // This URL needs to be always available as it is notification URL.
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
