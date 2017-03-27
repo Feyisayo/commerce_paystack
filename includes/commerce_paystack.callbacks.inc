@@ -1,15 +1,16 @@
 <?php
+
 /**
  * @file
  * Contains Commerce Payment callback functions for commerce_paystack.
  */
 
-/*
+/**
  * Default settings for PayStack.
  *
  * Dummy settings, really.
  */
-function commerce_paystack_default_settings () {
+function commerce_paystack_default_settings() {
   return array(
     'mode' => 'inline',
     'secret_key' => 'SECRET_KEY',
@@ -31,7 +32,7 @@ function commerce_paystack_settings_form($settings = array()) {
     '#type' => 'select',
     '#title' => t('Payment flow'),
     '#options' => array('inline' => t('Inline'), 'standard' => t('Standard')),
-    '#default_value' => $settings['mode']
+    '#default_value' => $settings['mode'],
   );
 
   $form['secret_key'] = array(
@@ -106,7 +107,7 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
     $custom_fields[] = array(
       'display_name' => 'Billing First Name',
       'variable_name' => "first_name",
-      'value' => $billing_info['first_name']
+      'value' => $billing_info['first_name'],
     );
     $custom_fields_str .= "{
       display_name: 'Billing First Name',
@@ -119,7 +120,7 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
     $custom_fields[] = array(
       'display_name' => 'Billing Surname',
       'variable_name' => "last_name",
-      'value' => $billing_info['last_name']
+      'value' => $billing_info['last_name'],
     );
     $custom_fields_str .= "{
       display_name: 'Billing Surname',
@@ -133,12 +134,12 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
     $url = 'https://api.paystack.co/transaction/initialize';
     $options = array();
     $options['method'] = 'POST';
-    $options['data'] =  json_encode(array(
+    $options['data'] = json_encode(array(
       'amount' => $transaction->amount,
       'email'=> $user->mail,
       'callback_url' => $callback_url,
       'metadata' => array(
-        'custom_fields' => $custom_fields
+        'custom_fields' => $custom_fields,
       )
     ));
     $options['headers'] = array(
@@ -150,7 +151,7 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
     $response = drupal_http_request($url, $options);
     if (property_exists($response, 'error')) {
       drupal_set_message(t('An unexpected error occured connecting to PayStack. Please try again later'), 'error');
-      watchdog('commerce_paystack', 'Error initializing payment: ' . print_r($response, TRUE));
+      watchdog('commerce_paystack', 'Error initializing payment: @response', array('@response' => print_r($response, TRUE)));
       return array();
     }
 
@@ -161,7 +162,7 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
     $transaction->remote_id = $paystack_txn['data']['reference'];
     commerce_payment_transaction_save($transaction);
 
-    // Redirect the user to PayStack using the returned authorization URL
+    // Redirect the user to PayStack using the returned authorization URL.
     $form['#action'] = $paystack_txn['data']['authorization_url'];
 
     // Add the redirection behaviour that would have been automatically added
@@ -174,7 +175,8 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
       '#value' => t('Proceed to PayStack'),
     );
 
-  } else {
+  }
+  else {
 
     drupal_add_js('https://js.paystack.co/v1/inline.js', 'external');
 
@@ -189,7 +191,6 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
       drupal_get_path('module', 'commerce_paystack') . '/commerce_paystack.css',
       'file'
     );
-
 
     $script = <<<SCRIPT
   function payWithPaystack(){
@@ -213,7 +214,10 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
     handler.openIframe();
   }
 SCRIPT;
-    drupal_add_js($script, array('type' => 'inline', 'scope' => 'footer', 'weight' => 5));
+    drupal_add_js(
+      $script,
+      array('type' => 'inline', 'scope' => 'footer', 'weight' => 5)
+    );
   }
 
   return $form;
@@ -227,7 +231,7 @@ function commerce_paystack_redirect_form_validate($order, $payment_method) {
   if (!isset($_SESSION['commerce_paystack_transaction_id'])) {
     return FALSE;
   }
-  else if ($payment_method['settings']['mode'] == 'inline') {
+  elseif ($payment_method['settings']['mode'] == 'inline') {
     // If the inline mode is used make sure the PayStack references exists in
     // the URL.
     if (arg(5) == NULL) {
@@ -257,7 +261,7 @@ function commerce_paystack_redirect_form_submit($order, $payment_method) {
   $txn_info = commerce_paystack_update_payment($txn_ref);
   if (!$txn_info) {
     drupal_set_message(t('There was an unexpected error looking up the your transaction details from PayStack'), 'error');
-    watchdog('commerce_paystack', 'Error looking up transaction ID ' . $txn_ref . ' on PayStack', array(), WATCHDOG_ALERT);
+    watchdog('commerce_paystack', 'Error looking up transaction ID @txnref on PayStack', array('@txnref' => $txn_ref), WATCHDOG_ALERT);
 
     return;
   }

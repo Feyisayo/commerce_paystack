@@ -33,8 +33,8 @@ function commerce_paystack_menu() {
   );
 
   $items['admin/paystack/look-up/ajax/%'] = array(
-      'delivery callback' => 'ajax_deliver',
-    ) + $items['admin/paystack/look-up/nojs/%'];
+    'delivery callback' => 'ajax_deliver',
+  ) + $items['admin/paystack/look-up/nojs/%'];
 
   // This menu link will be used as the payment notification url.
   $items['commerce_paystack/webhook'] = array(
@@ -59,13 +59,11 @@ function commerce_paystack_commerce_payment_method_info() {
     'offsite' => TRUE,
     'offsite_autoredirect' => FALSE,
     'active' => TRUE,
-    'file' => 'includes/commerce_paystack.callbacks.inc'
+    'file' => 'includes/commerce_paystack.callbacks.inc',
   );
 
   return $payment_methods;
 }
-
-
 
 /**
  * Menu Ajax callback to look up transaction from PayStack.
@@ -97,13 +95,13 @@ function commerce_paystack_ajax_requery($txn_id) {
 /**
  * Updates a payment's status and optionally the order's status.
  *
- * @param      $payment_id
- *  Payment ID to looked up
+ * @param string $payment_id
+ *   Payment ID to looked up.
  * @param bool $update_order_status
- *  If TRUE order status will be updated based on the payment status
+ *   If TRUE order status will be updated based on the payment status.
  *
  * @return bool|mixed
- *  The payment transaction object if successful, FALSE otherwise.
+ *   The payment transaction object if successful, FALSE otherwise.
  */
 function commerce_paystack_update_payment($payment_id, $update_order_status = TRUE) {
   $payment_transaction = commerce_payment_transaction_load($payment_id);
@@ -122,11 +120,11 @@ function commerce_paystack_update_payment($payment_id, $update_order_status = TR
 
   $payment_transaction->remote_status = $txn_info['data']['status'];
   $payment_transaction->status = $txn_info['data']['status'] == 'success' ? COMMERCE_PAYMENT_STATUS_SUCCESS : COMMERCE_PAYMENT_STATUS_FAILURE;
-  // Check for an amount discrepancy
+  // Check for an amount discrepancy.
   if ($txn_info['data']['amount'] != $payment_transaction->amount) {
     $payment_transaction->status = COMMERCE_PAYMENT_STATUS_PENDING;
     watchdog('commerce_paystack',
-      t('Amount discrepancy. local transaction amount: @lamount. Amount from PayStack: @ramount'),
+      'Amount discrepancy. local transaction amount: @lamount. Amount from PayStack: @ramount',
       array('@lamount' => $payment_transaction->amount, '@ramount' => $txn_info['data']['amount']));
   }
 
@@ -195,8 +193,8 @@ function commerce_paystack_lookup_transaction($txn_id) {
  * Processes event notifications from PayStack.
  */
 function commerce_paystack_process_webhook() {
-  // Only a post with paystack signature header gets our attention
-  if ((strtoupper($_SERVER['REQUEST_METHOD']) != 'POST' ) || !array_key_exists('HTTP_X_PAYSTACK_SIGNATURE', $_SERVER) ) {
+  // Only a post with paystack signature header gets our attention.
+  if ((strtoupper($_SERVER['REQUEST_METHOD']) != 'POST') || !array_key_exists('HTTP_X_PAYSTACK_SIGNATURE', $_SERVER)) {
     watchdog('commerce_paystack', 'Webhook URL accessed with no POST data submitted.', array(), WATCHDOG_WARNING);
     drupal_exit();
   }
@@ -220,11 +218,11 @@ function commerce_paystack_process_webhook() {
 
   drupal_send_headers(array('status' => '200'), TRUE);
 
-  // Parse webhook data
+  // Parse webhook data.
   $webhook_data = json_decode($input, TRUE);
 
   // @todo: This should be in a database abi? But do we really need to store it?
-  watchdog('commerce_paystack', 'Webhook data from PayStack: ' . print_r($webhook_data, TRUE));
+  watchdog('commerce_paystack', 'Webhook data from PayStack: @data', array('@data' => print_r($webhook_data, TRUE)));
 
   // The payment could be updated using the data from the webhook data
   // but there is already a function that does that. So in the interest of
@@ -271,7 +269,8 @@ function commerce_paystack_commerce_payment_method_info_alter(&$payment_methods)
 
   if ($instance['settings']['mode'] == 'standard') {
     $payment_methods['paystack']['offsite_autoredirect'] = TRUE;
-  } else {
+  }
+  else {
     $payment_methods['paystack']['offsite_autoredirect'] = FALSE;
   }
 }

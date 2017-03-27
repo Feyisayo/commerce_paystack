@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * Field handler for getting the payment transaction from PayStack.
@@ -8,6 +9,7 @@
  * Handler for the requery link on an PayStack payment transaction.
  */
 class commerce_paystack_field_handler_get_status extends views_handler_field {
+
   /**
    * Constructor.
    */
