@@ -9,14 +9,14 @@ The initial development of this module was sponsored by
 
 **Installation and configuration**
 
-- Install and enable [Drupal Commerce](https://www.drupal.org/project/commerce)
-and its sub-modules. See [here](https://www.drupal.org/node/120641) for how to
-install a drupal module
+- [Install and enable](https://www.drupal.org/node/1007434) Drupal Commerce
+  and its sub-modules. See [here](https://www.drupal.org/node/120641) for how to
+  install a drupal module
 - Install and enable
-[Commerce Paystack](https://www.drupal.org/project/commerce_paystack)
+  [Commerce Paystack](https://www.drupal.org/project/commerce_paystack)
 - Configure the module with your paystack credentials by going to
-`admin/commerce/config/payment-methods/manage/commerce_payment_paystack`
-and click *Edit* beside *Enable payment method: PayStack* action
+  `admin/commerce/config/payment-methods/manage/commerce_payment_paystack`
+  and click *Edit* beside *Enable payment method: PayStack* action
 - Select the payment flow ie *Inline* or *Standard*
 - Enter your secret key and public key.
 
