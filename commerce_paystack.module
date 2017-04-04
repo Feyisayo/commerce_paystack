@@ -250,7 +250,7 @@ function commerce_paystack_form_commerce_checkout_form_alter(&$form, &$form_stat
     // If we find PayStack..
     if ($method_id == 'paystack') {
       $path = url('<front>', array('absolute' => TRUE)) . '/' . drupal_get_path('module', 'commerce_paystack') . '/paystack.png';
-      $value = t('PayStack') . "<br/><img style='width: 200px; height: auto' src = '$path'/>";
+      $value .= "<br/><img style='width: 200px; height: auto' src = '$path'/>";
       break;
     }
   }
