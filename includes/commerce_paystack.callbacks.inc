@@ -76,6 +76,13 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
 
   global $user;
 
+  // Abort if there is no email associated with the order.
+  if (!isset($order->mail) || !$order->mail) {
+    drupal_set_message(t('An email address needs to be associated with this order'), 'error');
+    watchdog('commerce_paystack', 'Email address not associated with order ' . $order->order_number);
+    return array();
+  }
+
   // Create a new payment transaction to represent this payment attempt.
   $wrapper = entity_metadata_wrapper('commerce_order', $order);
   $currency_code = $payment_method['settings']['currency_code'];
