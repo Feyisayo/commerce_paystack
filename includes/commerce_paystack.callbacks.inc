@@ -136,7 +136,7 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
     $options['method'] = 'POST';
     $options['data'] = json_encode(array(
       'amount' => $transaction->amount,
-      'email' => $user->mail,
+      'email' => $order->mail,
       'callback_url' => $callback_url,
       'metadata' => array(
         'custom_fields' => $custom_fields,
@@ -196,7 +196,7 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
   function payWithPaystack(){
     var handler = PaystackPop.setup({
       key: '{$payment_method['settings']['public_key']}',
-      email: '{$user->mail}',
+      email: '{$order->mail}',
       amount: {$transaction->amount},
       ref: "{$transaction->transaction_id}",
       metadata: {
