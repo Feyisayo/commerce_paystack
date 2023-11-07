@@ -158,26 +158,27 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
     );
 
     $script = <<<SCRIPT
-  function payWithPaystack(){
-    var handler = PaystackPop.setup({
-      key: '{$payment_method['settings']['public_key']}',
-      email: '{$order->mail}',
-      amount: {$transaction->amount},
-      ref: "{$transaction->transaction_id}",
-      metadata: {
-        custom_fields: [
-          $custom_fields_str
-        ]
-      },
-      callback: function(response){
-        window.location.href = '$callback_url' + '/' + response.reference;
-      },
-      onClose: function(){
-        window.location.href = '$callback_url';
-      }
-    });
-    handler.openIframe();
-  }
+    jQuery(document).ready(
+      function payWithPaystack(){
+        var handler = PaystackPop.setup({
+          key: '{$payment_method['settings']['public_key']}',
+          email: '{$order->mail}',
+          amount: {$transaction->amount},
+          ref: "{$transaction->transaction_id}",
+          metadata: {
+            custom_fields: [
+              $custom_fields_str
+            ]
+          },
+          callback: function(response){
+            window.location.href = '$callback_url' + '/' + response.reference;
+          },
+          onClose: function(){
+            window.location.href = '$callback_url';
+          }
+        });
+        handler.openIframe();
+      })
 SCRIPT;
     drupal_add_js(
       $script,
