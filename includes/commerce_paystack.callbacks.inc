@@ -20,48 +20,6 @@ function commerce_paystack_default_settings() {
 }
 
 /**
- * Payment method callback: settings form.
- */
-function commerce_paystack_settings_form($settings = array()) {
-  // Merge default settings into the stored settings array.
-  $settings = (array) $settings + commerce_paystack_default_settings();
-
-  $form = array();
-
-  $form['mode'] = array(
-    '#type' => 'select',
-    '#title' => t('Payment flow'),
-    '#options' => array('inline' => t('Inline'), 'standard' => t('Standard')),
-    '#default_value' => $settings['mode'],
-  );
-
-  $form['secret_key'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Secret Key'),
-    '#description' => t('Your PayStack secret key'),
-    '#default_value' => $settings['secret_key'],
-    '#maxlength' => 150,
-  );
-
-  $form['public_key'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Public Key'),
-    '#description' => t('Your PayStack public key'),
-    '#default_value' => $settings['public_key'],
-    '#maxlength' => 150,
-  );
-
-  $form['currency_code'] = array(
-    '#type' => 'select',
-    '#title' => t('Select currency'),
-    '#options' => array('NGN' => 'Naira - NGN'),
-    '#default_value' => $settings['currency_code'],
-  );
-
-  return $form;
-}
-
-/**
  * Payment method callback: redirect form.
  */
 function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_method) {

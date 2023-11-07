@@ -244,13 +244,44 @@ function commerce_paystack_form_commerce_checkout_form_alter(&$form, &$form_stat
     return;
   }
 
+  // Check if there is an paystack charge line item in the order.
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $form_state['order']);
+  $paystack_charge_present = FALSE;
+  foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
+    if ('paystack_charge' == $line_item_wrapper->type->value()) {
+      $paystack_charge_present = TRUE;
+      break;
+    }
+  }
+
   // Loop over its options array looking for a PayStack option.
   foreach ($form['commerce_payment']['payment_method']['#options'] as $key => &$value) {
     list($method_id) = explode('|', $key);
     // If we find PayStack..
     if ($method_id == 'paystack') {
       $path = url('<front>', array('absolute' => TRUE)) . '/' . drupal_get_path('module', 'commerce_paystack') . '/paystack.png';
-      $value .= "<br/><img style='width: 200px; height: auto' src = '$path'/>";
+      $img_path = "<br/><img style='width: 200px; height: auto' src = '$path'/>";
+      
+      $paystack = commerce_payment_method_instance_load('paystack|commerce_payment_paystack');
+      if ($paystack['settings']['enable_charges']) {
+        if ($paystack_charge_present) {
+          $value .= ' (<i>' . t('Paystack charge will be removed if not selected') . "</i>) <img src = '$path'/>";
+        }
+        else {
+          $charge = commerce_paystack_calculate_charge($form_state['order']);
+          if (!$charge) {
+            $value .= " <img src = '$path'/>";
+          }
+          else {
+            $formatted_charge = commerce_currency_format($charge, $order_wrapper->commerce_order_total->currency_code->value());
+            $value .= ' (<i>' . t('Additional charge of') . "</i> <strong>$formatted_charge</strong>) " . $img_path;
+          }
+        }
+      }
+      else {
+        $value .= $img_path;
+      }
+      
       break;
     }
   }
@@ -284,4 +315,219 @@ function commerce_paystack_views_api() {
     'api' => 3,
     'path' => drupal_get_path('module', 'commerce_paystack') . '/includes/views',
   );
+}
+
+/**
+ * Payment method callback: settings form.
+ */
+function commerce_paystack_settings_form($settings = array()) {
+  // Merge default settings into the stored settings array.
+  $settings = (array) $settings + commerce_paystack_default_settings();
+
+  $form = array();
+
+  $form['mode'] = array(
+    '#type' => 'select',
+    '#title' => t('Payment flow'),
+    '#options' => array('inline' => t('Inline'), 'standard' => t('Standard')),
+    '#default_value' => $settings['mode'],
+  );
+
+  $form['secret_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Secret Key'),
+    '#description' => t('Your PayStack secret key'),
+    '#default_value' => $settings['secret_key'],
+    '#maxlength' => 150,
+  );
+
+  $form['public_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Public Key'),
+    '#description' => t('Your PayStack public key'),
+    '#default_value' => $settings['public_key'],
+    '#maxlength' => 150,
+  );
+
+  $form['currency_code'] = array(
+    '#type' => 'select',
+    '#title' => t('Select currency'),
+    '#options' => array('NGN' => 'Naira - NGN'),
+    '#default_value' => $settings['currency_code'],
+  );
+
+  $form['enable_charges'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Enable Paystack Charges'),
+    '#description' => t('Pass Paystack charges to the payer. All other settings under "paystack Charges" will be ignored if this is unchecked'),
+    '#default_value' => isset($settings['enable_charges']) ? $settings['enable_charges'] : TRUE,
+  );
+
+  $form['charges'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Paystack Charges'),
+    '#collapsible' => FALSE,
+  );
+
+  $form['charges']['percentage'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Paystack charge percentage'),
+    '#description' => t('The percentage of the charge without the "%". eg 1.5.'),
+    '#maxlength' => 4,
+    '#size' => 5,
+    '#element_validate' => array('_commerce_paystack_settings_form_validate'),
+    '#default_value' => $settings['charges']['percentage'] ? $settings['charges']['percentage'] : 1.5,
+  );
+
+  $form['charges']['fixed_fee'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Paystack fixed fee'),
+    '#description' => t('A fixed value charged in addition to the percentage'),
+    '#maxlength' => 4,
+    '#size' => 5,
+    '#element_validate' => array('_commerce_paystack_settings_form_validate'),
+    '#default_value' => $settings['charges']['fixed_fee'] ? $settings['charges']['fixed_fee'] : 100,
+  );
+
+  $form['charges']['max_amount'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Max amount to charge'),
+    '#maxlength' => 10,
+    '#size' => 10,
+    '#element_validate' => array('_commerce_paystack_settings_form_validate'),
+    '#default_value' => $settings['charges']['max_amount'] ? $settings['charges']['max_amount'] : 2000,
+  );
+
+  $line_item_types = array();
+  foreach (commerce_line_item_types() as $type => $line_item_type) {
+    if ('paystack_charge' != $type) {
+      $line_item_types[$type] = $line_item_type['name'];
+    }
+  }
+  $form['charges']['excluded_line_items'] = array(
+    '#type' => 'select',
+    '#title' => t('Excluded line items'),
+    '#description' => t('Specify the line items on which Paystack charge should not apply'),
+    '#multiple' => TRUE,
+    '#options' => $line_item_types,
+    '#default_value' => $settings['charges']['excluded_line_items'],
+  );
+
+  $product_types = array();
+  foreach (commerce_product_types() as $type => $a_product_type) {
+    $product_types[$type] = $a_product_type['name'];
+  }
+  $form['charges']['excluded_product_types'] = array(
+    '#type' => 'select',
+    '#title' => t('Excluded product types'),
+    '#description' => t('Specify the product types on which Paystack charge should not apply'),
+    '#multiple' => TRUE,
+    '#options' => $product_types,
+    '#default_value' => $settings['charges']['excluded_product_types'],
+  );
+
+  return $form;
+}
+
+/**
+ * Validation callback for some settings form elements.
+ */
+function _commerce_paystack_settings_form_validate($element, &$form_state, $form) {
+  if (!is_numeric($element['#value']) || $element['#value'] <= 0) {
+    form_error($element, t('You must set a number greater than zero'));
+  }
+}
+
+/**
+ * Calculates the paystack for an order.
+ *
+ * @param object $order
+ *   The order to calculate the paystack on.
+ *
+ * @return int
+ *   The paystack charge if charges are enabled. FALSE otherwise.
+ */
+function commerce_paystack_calculate_charge($order) {
+  // Load payment method settings.
+  $paystack = commerce_payment_method_instance_load('paystack|commerce_payment_paystack');
+
+  if (!$paystack['settings']['enable_charges']) {
+    return FALSE;
+  }
+
+  $paystack_charge = 0;
+  $paystack_rate = $paystack['settings']['charges']['percentage'] / 100;
+
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+  foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
+    if ('paystack_charge' == $line_item_wrapper->type->value()) {
+      continue;
+    }
+
+    if (in_array($line_item_wrapper->type->value(), $paystack['settings']['charges']['excluded_line_items'])) {
+      continue;
+    }
+
+    if (in_array($line_item_wrapper->type->value(), commerce_product_line_item_types())) {
+      if (in_array($line_item_wrapper->commerce_product->type->value(), $paystack['settings']['charges']['excluded_product_types'])) {
+        continue;
+      }
+    }
+
+    // Calculate the charge on this line item.
+    $line_item_unit_price = $line_item_wrapper->commerce_unit_price->amount->value();
+    $paystack_charge += $line_item_unit_price * $paystack_rate * $line_item_wrapper->quantity->value();
+  }
+
+  $currency_code = $paystack['settings']['currency_code'];
+  $order_currency_code = $order_wrapper->commerce_order_total->currency_code->value();
+  $amount = commerce_currency_amount_to_decimal(
+    commerce_currency_convert($order_wrapper->commerce_order_total->amount->value(), $order_currency_code, $currency_code),
+    $currency_code
+  );
+
+  // Add the fixed fee. Waive the fixed fee if the order is less than 2,500
+  if ($amount >= 2500) {
+    $paystack_charge += ($paystack['settings']['charges']['fixed_fee'] * 100);
+  }
+
+  // Apply the maximum charge amount.
+  $max_amount = $paystack['settings']['charges']['max_amount'] * 100;
+  if ($paystack_charge > $max_amount) {
+    $paystack_charge = $max_amount;
+  }
+
+  return $paystack_charge;
+}
+
+/**
+ * Implements hook_commerce_line_item_type_info().
+ */
+function commerce_paystack_commerce_line_item_type_info() {
+  $line_item_types = array();
+
+  $line_item_types['paystack_charge'] = array(
+    'type' => 'paystack_charge',
+    'name' => t('paystack Charge'),
+    'description' => t('Line item to represent the paystack charge on a payment'),
+    'product' => FALSE,
+  );
+
+  return $line_item_types;
+}
+
+/**
+ * Implements hook_commerce_price_component_type_info().
+ *
+ * Defines the custom price component to be used for the paystack charge.
+ */
+function commerce_paystack_commerce_price_component_type_info() {
+  $info = array();
+
+  $info['paystack_charge'] = array(
+    'title' => t('Paystack Charge'),
+    'display_title' => t('Paystack Charge'),
+  );
+
+  return $info;
 }
