@@ -456,7 +456,7 @@ function commerce_paystack_calculate_charge($order) {
   }
 
   $paystack_charge = 0;
-  $paystack_rate = $paystack['settings']['charges']['percentage'] / 100;
+  $paystack_rate = (100 - $paystack['settings']['charges']['percentage']) / 100;
 
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
   foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
@@ -476,7 +476,7 @@ function commerce_paystack_calculate_charge($order) {
 
     // Calculate the charge on this line item.
     $line_item_unit_price = $line_item_wrapper->commerce_unit_price->amount->value();
-    $paystack_charge += $line_item_unit_price * $paystack_rate * $line_item_wrapper->quantity->value();
+    $paystack_charge += (($line_item_unit_price / $paystack_rate) - $line_item_unit_price) * $line_item_wrapper->quantity->value();
   }
 
   $currency_code = $paystack['settings']['currency_code'];
