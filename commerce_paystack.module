@@ -487,7 +487,7 @@ function commerce_paystack_calculate_charge($order) {
   );
 
   // Add the fixed fee. Waive the fixed fee if the order is less than 2,500
-  if ($amount >= 2500) {
+  if ($amount >= 2500 && $paystack_charge) {
     $paystack_charge += ($paystack['settings']['charges']['fixed_fee'] * 100);
   }
 
