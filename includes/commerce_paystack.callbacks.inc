@@ -66,47 +66,52 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
   // Get billing details ready for Paystack.
   $custom_fields = array();
   $custom_fields_str = '';
-  $billing_info = $wrapper->commerce_customer_billing->commerce_customer_address->value();
+  if (isset($wrapper->commerce_customer_billing) && isset($wrapper->commerce_customer_billing->commerce_customer_address)) {
+    $billing_info = $wrapper->commerce_customer_billing->commerce_customer_address->value();
 
-  if ($billing_info['first_name']) {
-    $custom_fields[] = array(
-      'display_name' => 'Billing First Name',
-      'variable_name' => "first_name",
-      'value' => $billing_info['first_name'],
-    );
-    $custom_fields_str .= "{
-      display_name: 'Billing First Name',
-      variable_name: 'first_name',
-      value: '{$billing_info['first_name']}'
-     },";
+    if ($billing_info['first_name']) {
+      $custom_fields[] = array(
+        'display_name' => 'Billing First Name',
+        'variable_name' => "first_name",
+        'value' => $billing_info['first_name'],
+      );
+      $custom_fields_str .= "{
+        display_name: 'Billing First Name',
+        variable_name: 'first_name',
+        value: '{$billing_info['first_name']}'
+       },";
+  
+    }
+    if ($billing_info['last_name']) {
+      $custom_fields[] = array(
+        'display_name' => 'Billing Surname',
+        'variable_name' => "last_name",
+        'value' => $billing_info['last_name'],
+      );
+      $custom_fields_str .= "{
+        display_name: 'Billing Surname',
+        variable_name: 'last_name',
+        value: '{$billing_info['last_name']}'
+       },";
+    }
+  }
 
-  }
-  if ($billing_info['last_name']) {
-    $custom_fields[] = array(
-      'display_name' => 'Billing Surname',
-      'variable_name' => "last_name",
-      'value' => $billing_info['last_name'],
-    );
-    $custom_fields_str .= "{
-      display_name: 'Billing Surname',
-      variable_name: 'last_name',
-      value: '{$billing_info['last_name']}'
-     },";
-  }
   // Create the checkout form based on the standard or inline mode.
   if ($payment_method['settings']['mode'] == 'standard') {
     // Initialize the payment transaction from PayStack.
     $url = 'https://api.paystack.co/transaction/initialize';
     $options = array();
     $options['method'] = 'POST';
-    $options['data'] = json_encode(array(
+    $data = array(
       'amount' => $transaction->amount,
       'email' => $order->mail,
       'callback_url' => $callback_url,
-      'metadata' => array(
-        'custom_fields' => $custom_fields,
-      ),
-    ));
+    );
+    if ($custom_fields) {
+      $data['metadata']['custom_fields'] = $custom_fields;
+    }
+    $options['data'] = json_encode($data);
+
     $options['headers'] = array(
       'authorization' => 'Bearer ' . $payment_method['settings']['secret_key'],
       'content-type' => 'application/json',
