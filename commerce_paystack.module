@@ -458,6 +458,7 @@ function commerce_paystack_calculate_charge($order) {
   $paystack_charge = 0;
   $paystack_rate = (100 - $paystack['settings']['charges']['percentage']) / 100;
 
+  $order_amount_for_charge = 0;
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
   foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
     if ('paystack_charge' == $line_item_wrapper->type->value()) {
@@ -476,7 +477,15 @@ function commerce_paystack_calculate_charge($order) {
 
     // Calculate the charge on this line item.
     $line_item_unit_price = $line_item_wrapper->commerce_unit_price->amount->value();
-    $paystack_charge += (($line_item_unit_price / $paystack_rate) - $line_item_unit_price) * $line_item_wrapper->quantity->value();
+    $line_item_quantity = $line_item_wrapper->quantity->value();
+    $paystack_charge += (($line_item_unit_price / $paystack_rate) - $line_item_unit_price) * $line_item_quantity;
+
+    // Store the line item total for later rounding error checks
+    $order_amount_for_charge += ($line_item_unit_price * $line_item_quantity);
+  }
+
+  if ($paystack_charge == 0) {
+    return 0;
   }
 
   $currency_code = $paystack['settings']['currency_code'];
@@ -487,7 +496,7 @@ function commerce_paystack_calculate_charge($order) {
   );
 
   // Add the fixed fee. Waive the fixed fee if the order is less than 2,500
-  if ($amount >= 2500 && $paystack_charge) {
+  if ($amount >= 2500) {
     $paystack_charge += ($paystack['settings']['charges']['fixed_fee'] * 100);
   }
 
@@ -495,6 +504,20 @@ function commerce_paystack_calculate_charge($order) {
   $max_amount = $paystack['settings']['charges']['max_amount'] * 100;
   if ($paystack_charge > $max_amount) {
     $paystack_charge = $max_amount;
+  }
+
+  // There are often rounding errors on the charge. Let's find the difference and minimize it out by
+  // simulating the paystack charge
+  $simulated_amount = $order_amount_for_charge + $paystack_charge;
+  // Apply charge
+  $simulated_charge = $simulated_amount * $paystack['settings']['charges']['percentage'] / 100;
+  if ($amount >= 2500) {
+    $simulated_charge += ($paystack['settings']['charges']['fixed_fee'] * 100);
+  }
+
+  $diff = ($order_amount_for_charge - $simulated_charge) - ($order_amount_for_charge - $paystack_charge);  
+  if ($diff != 0.0) {
+    $paystack_charge = $diff > 0 ? $paystack_charge - $diff :  $paystack_charge + abs($diff);
   }
 
   return $paystack_charge;
