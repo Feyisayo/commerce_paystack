@@ -503,7 +503,7 @@ function commerce_paystack_calculate_charge($order) {
   // Apply the maximum charge amount.
   $max_amount = $paystack['settings']['charges']['max_amount'] * 100;
   if ($paystack_charge > $max_amount) {
-    $paystack_charge = $max_amount;
+    return $max_amount;
   }
 
   // There are often rounding errors on the charge. Let's find the difference and minimize it out by
