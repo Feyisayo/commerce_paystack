@@ -96,6 +96,8 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
     }
   }
 
+  commerce_paystack_create_customer($order->mail);
+  
   // Create the checkout form based on the standard or inline mode.
   if ($payment_method['settings']['mode'] == 'standard') {
     // Initialize the payment transaction from PayStack.
@@ -238,4 +240,38 @@ function commerce_paystack_redirect_form_submit($order, $payment_method) {
   }
 
   unset($_SESSION['commerce_paystack_transaction_id']);
+}
+
+/**
+ * Creates/updates a customer using the current user's names
+ * For GAN only at the moment
+ */
+function commerce_paystack_create_customer ($user_email) {
+  $user_wrapper = entity_metadata_wrapper('user', user_load_by_mail($user_email));
+  $data = array(
+    'email' => $user_email,
+    'first_name' => ucfirst(strtolower( $user_wrapper->field_first_name->value() )),
+    'last_name' => ucfirst(strtolower( $user_wrapper->field_surname->value() ))
+  );
+
+  $paystack = commerce_payment_method_instance_load('paystack|commerce_payment_paystack');
+
+  $url = 'https://api.paystack.co/customer';
+  $options = array();
+  $options['method'] = 'POST';
+  $options['data'] = json_encode($data);
+  $options['headers'] = array(
+    'authorization' => 'Bearer ' . $paystack['settings']['secret_key'],
+    'content-type' => 'application/json',
+    'cache-control' => 'no-cache',
+  );
+
+  watchdog('commerce_paystack', 'Creating customer on Paystack using @data', array('@data' => print_r($data, TRUE)));
+  $response = drupal_http_request($url, $options);
+
+  if (property_exists($response, 'error')) {
+    watchdog('commerce_paystack', 'Error creating customer on Paystack: @response', array('@response' => print_r($response, TRUE)));
+  } else {
+    watchdog('commerce_paystack', 'Customer created on Paystack: @response', array('@response' => print_r($response, TRUE)));
+  }
 }

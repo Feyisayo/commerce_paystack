@@ -359,7 +359,7 @@ function commerce_paystack_settings_form($settings = array()) {
   $form['enable_charges'] = array(
     '#type' => 'checkbox',
     '#title' => t('Enable Paystack Charges'),
-    '#description' => t('Pass Paystack charges to the payer. All other settings under "paystack Charges" will be ignored if this is unchecked'),
+    '#description' => t('Pass Paystack charges to the payer. All other settings under "Paystack Charges" will be ignored if this is unchecked'),
     '#default_value' => isset($settings['enable_charges']) ? $settings['enable_charges'] : TRUE,
   );
 
