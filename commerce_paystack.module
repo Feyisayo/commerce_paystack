@@ -175,7 +175,7 @@ function commerce_paystack_lookup_transaction($txn_id) {
   }
 
   $transaction = commerce_payment_transaction_load($txn_id);
-  $url = 'https://api.paystack.co/transaction/verify/' . $transaction->remote_id;
+  $url = 'https://api.paystack.co/transaction/verify/' . $transaction->transaction_id;
   $options = array();
   $options['headers'] = array(
     'authorization' => 'Bearer ' . $payment_method['settings']['secret_key'],
@@ -261,7 +261,7 @@ function commerce_paystack_form_commerce_checkout_form_alter(&$form, &$form_stat
     if ($method_id == 'paystack') {
       $path = url('<front>', array('absolute' => TRUE)) . '/' . drupal_get_path('module', 'commerce_paystack') . '/paystack.png';
       $img_path = "<br/><img style='width: 200px; height: auto' src = '$path'/>";
-      
+
       $paystack = commerce_payment_method_instance_load('paystack|commerce_payment_paystack');
       if ($paystack['settings']['enable_charges']) {
         if ($paystack_charge_present) {
@@ -281,7 +281,7 @@ function commerce_paystack_form_commerce_checkout_form_alter(&$form, &$form_stat
       else {
         $value .= $img_path;
       }
-      
+
       break;
     }
   }
@@ -515,7 +515,7 @@ function commerce_paystack_calculate_charge($order) {
     $simulated_charge += ($paystack['settings']['charges']['fixed_fee'] * 100);
   }
 
-  $diff = ($order_amount_for_charge - $simulated_charge) - ($order_amount_for_charge - $paystack_charge);  
+  $diff = ($order_amount_for_charge - $simulated_charge) - ($order_amount_for_charge - $paystack_charge);
   if ($diff != 0.0) {
     $paystack_charge = $diff > 0 ? $paystack_charge - $diff :  $paystack_charge + abs($diff);
   }
