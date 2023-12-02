@@ -288,8 +288,8 @@ function commerce_paystack_create_customer ($user_email) {
   $response = drupal_http_request($url, $options);
 
   if (property_exists($response, 'error')) {
-    watchdog('commerce_paystack', 'Error creating customer on Paystack: @response', array('@response' => print_r($response, TRUE)));
+    watchdog('commerce_paystack', 'Error creating customer on Paystack: @data', array('@response' => print_r($response->data, TRUE)));
   } else {
-    watchdog('commerce_paystack', 'Customer created on Paystack: @response', array('@response' => print_r($response, TRUE)));
+    watchdog('commerce_paystack', 'Customer profile created on Paystack for @email', array('@email' => $user_email));
   }
 }
