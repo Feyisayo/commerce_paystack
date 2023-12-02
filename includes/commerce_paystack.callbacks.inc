@@ -260,10 +260,10 @@ function commerce_paystack_create_customer ($user_email) {
   $options['method'] = 'GET';
   $options['headers'] = $headers;
   $response = drupal_http_request($url, $options);
-  if (property_exists($response, 'error')) {
+  /*if (property_exists($response, 'error')) {
     watchdog('commerce_paystack', 'Error fetching customer details from Paystack: @response', array('@response' => print_r($response, TRUE)));
     return FALSE;
-  }
+  }*/
 
   $customer_info = json_decode($response->data, TRUE);
   if ($customer_info['status'] == True && $customer_info['data']['first_name']) {
