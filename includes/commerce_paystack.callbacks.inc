@@ -80,7 +80,7 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
         variable_name: 'first_name',
         value: '{$billing_info['first_name']}'
        },";
-  
+
     }
     if ($billing_info['last_name']) {
       $custom_fields[] = array(
@@ -97,7 +97,7 @@ function commerce_paystack_redirect_form($form, &$form_state, $order, $payment_m
   }
 
   commerce_paystack_create_customer($order->mail);
-  
+
   // Create the checkout form based on the standard or inline mode.
   if ($payment_method['settings']['mode'] == 'standard') {
     // Initialize the payment transaction from PayStack.
@@ -247,24 +247,42 @@ function commerce_paystack_redirect_form_submit($order, $payment_method) {
  * For GAN only at the moment
  */
 function commerce_paystack_create_customer ($user_email) {
+  $paystack = commerce_payment_method_instance_load('paystack|commerce_payment_paystack');
+  $headers = array(
+    'authorization' => 'Bearer ' . $paystack['settings']['secret_key'],
+    'content-type' => 'application/json',
+    'cache-control' => 'no-cache',
+  );
+  // Fetch the customer
+  watchdog('commerce_paystack', 'Checking for customer profile of @email on Paystack', array('@email' => $user_email));
+  $url = 'https://api.paystack.co/customer/' . $user_email;
+  $options = array();
+  $options['method'] = 'GET';
+  $options['headers'] = $headers;
+  $response = drupal_http_request($url, $options);
+  if (property_exists($response, 'error')) {
+    watchdog('commerce_paystack', 'Error fetching customer details from Paystack: @response', array('@response' => print_r($response, TRUE)));
+    return FALSE;
+  }
+
+  $customer_info = json_decode($response->data, TRUE);
+  if ($customer_info['status'] == True && $customer_info['data']['first_name']) {
+    watchdog('commerce_paystack', 'Customer profile for @email found on Paystack', array('@email' => $user_email));
+    return TRUE;
+  }
+
+  // Create/update customer as he/she does not exist or names are missing
   $user_wrapper = entity_metadata_wrapper('user', user_load_by_mail($user_email));
   $data = array(
     'email' => $user_email,
     'first_name' => ucfirst(strtolower( $user_wrapper->field_first_name->value() )),
     'last_name' => ucfirst(strtolower( $user_wrapper->field_surname->value() ))
   );
-
-  $paystack = commerce_payment_method_instance_load('paystack|commerce_payment_paystack');
-
   $url = 'https://api.paystack.co/customer';
   $options = array();
   $options['method'] = 'POST';
   $options['data'] = json_encode($data);
-  $options['headers'] = array(
-    'authorization' => 'Bearer ' . $paystack['settings']['secret_key'],
-    'content-type' => 'application/json',
-    'cache-control' => 'no-cache',
-  );
+  $options['headers'] = $headers;
 
   watchdog('commerce_paystack', 'Creating customer on Paystack using @data', array('@data' => print_r($data, TRUE)));
   $response = drupal_http_request($url, $options);
